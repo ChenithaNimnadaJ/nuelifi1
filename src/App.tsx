@@ -1,34 +1,44 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Header from './components/Header'
-import Button from './components/Button'
+import Sidebar from './components/Sidebar'
+import Footer from './components/Footer'
+import Landing from './pages/Landing'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import Settings from './pages/Settings'
 
-export default function App() {
+export default function App(){
+  const [page, setPage] = useState<string>('landing')
+  const [authenticated, setAuthenticated] = useState(false)
+
+  function handleNavigate(p: string){
+    setPage(p)
+  }
+
+  function handleLogin(){
+    setAuthenticated(true)
+    setPage('dashboard')
+  }
+
   return (
-    <div className="min-h-screen bg-[color:var(--color-bg)] text-[color:var(--color-fg)] font-sf-pro">
+    <div className="min-h-screen flex flex-col bg-[color:var(--color-bg)] text-[color:var(--color-fg)] font-inter">
       <Header />
 
-      <main className="max-w-5xl mx-auto p-6">
-        <section className="mt-8">
-          <h1 className="text-3xl font-semibold">Nuelifi — Redesigned</h1>
-          <p className="mt-3 text-muted">Initial conversion to the Figma visual system (tokens, typography, and base components).</p>
+      <div className="flex flex-1 max-w-7xl mx-auto w-full">
+        {/* Show sidebar only when authenticated or on wider screens */}
+        {authenticated && (
+          <Sidebar onNavigate={handleNavigate} current={page} />
+        )}
 
-          <div className="mt-6 flex items-center gap-4">
-            <Button variant="primary">Primary action</Button>
-            <Button variant="ghost">Secondary</Button>
-          </div>
+        <div className="flex-1">
+          {!authenticated && page === 'landing' && <Landing />}
+          {!authenticated && page === 'login' && <Login onLogin={handleLogin} />}
+          {authenticated && page === 'dashboard' && <Dashboard />}
+          {authenticated && page === 'settings' && <Settings />}
 
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-6 rounded-xl shadow-card bg-[color:var(--color-surface)]">
-              <h3 className="text-xl font-medium">Card title</h3>
-              <p className="mt-2 text-sm text-muted">Card body matches new tokens.</p>
-            </div>
-            <div className="p-6 rounded-xl shadow-card bg-[color:var(--color-surface)]">
-              <h3 className="text-xl font-medium">Another card</h3>
-              <p className="mt-2 text-sm text-muted">Responsive and accessible by default.</p>
-            </div>
-          </div>
-        </section>
-      </main>
+          <Footer />
+        </div>
+      </div>
     </div>
   )
 }
