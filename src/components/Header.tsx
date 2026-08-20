@@ -1,4 +1,5 @@
 import React from 'react'
+import Button from '../components/Button'
 
 export default function Header(){
   return (
@@ -13,6 +14,7 @@ export default function Header(){
           <a className="text-sm text-muted hover:text-[color:var(--color-fg)]">Docs</a>
           <a className="text-sm text-muted hover:text-[color:var(--color-fg)]">Pricing</a>
           <a className="text-sm text-muted hover:text-[color:var(--color-fg)]">Dashboard</a>
+          <Button variant="ghost">Sign in</Button>
         </nav>
       </div>
     </header>

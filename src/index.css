@@ -2,28 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Font setup
-   - Please add SF Pro webfont files to /public/fonts/ and uncomment the @font-face blocks below.
-   - SF Pro is a proprietary font; ensure you have the correct web license before self-hosting.
-*/
-
-/* Example @font-face (commented out). Add woff2 files at /public/fonts and enable: */
-/*
-@font-face {
-  font-family: 'SF Pro';
-  src: url('/fonts/SF-Pro-Text.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'SF Pro';
-  src: url('/fonts/SF-Pro-Display.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-*/
+/* Font setup: Inter loaded from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
   --color-bg: #0f1724; /* deep neutral background */
@@ -39,21 +19,36 @@
   --shadow-card: 0 6px 18px rgba(2,6,23,0.6);
 }
 
-/* Utility classes for CSS var usage where Tailwind can't directly reference vars */
+/* Accessibility: prefer-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0s !important; transition-duration: 0s !important; }
+}
 
+/* Focus styles and focus-visible support */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 70%, white 30%);
+  outline-offset: 2px;
+}
+
+/* Utility classes for CSS var usage where Tailwind can't directly reference vars */
 .text-muted { color: var(--color-muted); }
 .shadow-card { box-shadow: var(--shadow-card); }
+
+/* Motion helpers for subtle micro-interactions */
+.transition-base { transition: transform 160ms cubic-bezier(.2,.8,.2,1), box-shadow 160ms cubic-bezier(.2,.8,.2,1), background-color 160ms ease; }
+.scale-press:active { transform: scale(0.99); }
+
+/* Reduced motion class for components to respect user preferences */
+.reduced-motion { transition: none !important }
 
 /* Default body styles */
 body {
   margin: 0;
-  font-family: 'SF Pro', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
   background-color: var(--color-bg);
   color: var(--color-fg);
-}
-
-/* Small accessibility helpers */
-button:focus {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, white 40%);
-  outline-offset: 2px;
 }
