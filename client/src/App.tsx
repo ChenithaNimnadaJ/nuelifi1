@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { supabase, type CollifiResourceRow } from "./lib/supabase";
 import {
   ArrowUpRight,
   Atom,
@@ -60,7 +61,7 @@ const subjects: Subject[] = [
   { slug: "buddhism", name: "Buddhism", eyebrow: "07 / reflection", description: "Explore ideas of mind, ethics, and the path to wisdom.", accent: "#e8e0cf", icon: Sparkles },
 ];
 
-const resources: Resource[] = [];
+let resources: Resource[] = [];
 
 const articles: Article[] = [];
 
@@ -76,7 +77,7 @@ function routeFor(pathname = window.location.pathname) {
   if (parts[0] === "subjects" && parts[1]) return { page: "subject", slug: parts[1] };
   if (parts[0] === "resources") return { page: "resources", slug: parts[1] || "" };
   if (parts[0] === "articles") return { page: "article", slug: parts[1] || "" };
-  if (["exams", "about", "contact", "privacy", "terms"].includes(parts[0])) return { page: parts[0], slug: "" };
+  if (["exams", "about", "contact", "privacy", "terms", "admin"].includes(parts[0])) return { page: parts[0], slug: "" };
   return { page: "home", slug: "" };
 }
 
@@ -115,7 +116,7 @@ function SubjectCard({ subject, compact = false }: { subject: Subject; compact?:
 }
 
 function ResourceCard({ resource }: { resource: Resource }) {
-  return <button className="resource-card" onClick={() => go(`/resources/${resource.slug}`)}><div className="resource-meta"><span>{resource.type}</span><span>{resource.subject}</span></div><h3>{resource.title}</h3><p>{resource.description}</p><div className="resource-bottom"><span>{resource.exam} · {resource.year}</span><ChevronRight size={16} /></div></button>;
+  return <a className="resource-card" href={(resource as any).url || `/resources/${resource.slug}`} target={(resource as any).url ? "_blank" : undefined} rel={(resource as any).url ? "noreferrer" : undefined}><div className="resource-meta"><span>{resource.type}</span><span>{resource.subject}</span></div><h3>{resource.title}</h3><p>{resource.description}</p><div className="resource-bottom"><span>{resource.exam} · {resource.year}</span><ChevronRight size={16} /></div></a>;
 }
 
 function ArticleCard({ article, featured = false }: { article: Article; featured?: boolean }) {
@@ -177,6 +178,19 @@ function SimplePage({ kind }: { kind: string }) {
   return <PageShell><div className="simple-page"><span className="eyebrow">{item.eyebrow}</span><h1>{item.title}</h1><p className="simple-lede">{item.copy}</p><div className="simple-body">{item.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>{kind === "contact" && <a className="button button-dark" href="mailto:hello@collifi.org">Email Collifi <ArrowUpRight size={16} /></a>}</div></PageShell>;
 }
 
+function AdminPage({ onPublished }: { onPublished: (row: CollifiResourceRow) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [session, setSession] = useState<any>(null);
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [message, setMessage] = useState("");
+  const [form, setForm] = useState({ title: "", resource_type: "past_paper", subject: "Mathematics", examination: "G.C.E. O/L", grade: "", year: "", medium: "English", resource_url: "" });
+  useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)); const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next)); return () => data.subscription.unsubscribe(); }, []);
+  const auth = async () => { const result = mode === "login" ? await supabase.auth.signInWithPassword({ email, password }) : await supabase.auth.signUp({ email, password }); setMessage(result.error?.message || (mode === "login" ? "Signed in." : "Account created. Check email if confirmation is enabled.")); if (result.data.session) setSession(result.data.session); };
+  const publish = async (event: React.FormEvent) => { event.preventDefault(); setMessage(""); const { data, error } = await supabase.from("collifi_resources").insert({ ...form, year: form.year ? Number(form.year) : null, status: "published", created_by: session.user.id }).select().single(); if (error) setMessage(error.message); else { onPublished(data as CollifiResourceRow); setForm({ title: "", resource_type: "past_paper", subject: "Mathematics", examination: "G.C.E. O/L", grade: "", year: "", medium: "English", resource_url: "" }); setMessage("Published and searchable immediately."); } };
+  return <PageShell><div className="simple-page admin-page"><span className="eyebrow">RESOURCE ADMIN</span><h1>Publish a resource.</h1><p className="simple-lede">Add a past paper or study material. Published resources become visible in the student library immediately.</p>{!session ? <div className="admin-form"><input value={email} onChange={e => setEmail(e.target.value)} placeholder="Admin email" type="email" /><input value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" type="password" /><button className="button button-dark" onClick={auth}>{mode === "login" ? "Sign in" : "Create account"}</button><button className="text-button" onClick={() => setMode(mode === "login" ? "signup" : "login")}>{mode === "login" ? "Need an account? Create one" : "Already registered? Sign in"}</button></div> : <form className="admin-form" onSubmit={publish}><input required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Title" /><select value={form.resource_type} onChange={e => setForm({ ...form, resource_type: e.target.value })}><option value="past_paper">Past paper</option><option value="short_note">Short note</option><option value="study_material">Study material</option><option value="mcq">MCQ</option><option value="short_question">Short question</option></select><input required value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Subject" /><input required value={form.examination} onChange={e => setForm({ ...form, examination: e.target.value })} placeholder="Grade / examination" /><input value={form.grade} onChange={e => setForm({ ...form, grade: e.target.value })} placeholder="Grade (optional)" /><input value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} placeholder="Year (optional)" inputMode="numeric" /><input value={form.medium} onChange={e => setForm({ ...form, medium: e.target.value })} placeholder="Medium" /><input required type="url" value={form.resource_url} onChange={e => setForm({ ...form, resource_url: e.target.value })} placeholder="Resource URL or file link" /><button className="button button-dark" type="submit">Publish resource</button><button className="text-button" type="button" onClick={() => supabase.auth.signOut()}>Sign out</button></form>}{message && <p className="admin-message">{message}</p>}</div></PageShell>;
+}
+
 function SearchDialog({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
   const results = query.trim() ? [...subjects.map((item) => ({ title: item.name, detail: "Subject", path: `/subjects/${item.slug}` })), ...resources.map((item) => ({ title: item.title, detail: `${item.subject} · ${item.type}`, path: `/resources/${item.slug}` })), ...articles.map((item) => ({ title: item.title, detail: `Article · ${item.category}`, path: `/articles/${item.slug}` }))].filter((item) => `${item.title} ${item.detail}`.toLowerCase().includes(query.toLowerCase())).slice(0, 7) : [];
@@ -186,9 +200,12 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
 export default function App() {
   const [route, setRoute] = useState(routeFor());
   const [searchOpen, setSearchOpen] = useState(false);
+  const [liveResources, setLiveResources] = useState<Resource[]>([]);
+  useEffect(() => { supabase.from("collifi_resources").select("*").eq("status", "published").order("created_at", { ascending: false }).then(({ data }) => { if (data) setLiveResources(data.map((row: any) => ({ slug: row.id, title: row.title, subject: row.subject, exam: row.examination, type: row.resource_type, year: row.year ? String(row.year) : "", difficulty: row.grade || "", description: [row.medium, row.grade].filter(Boolean).join(" · ") || "Published Collifi resource.", url: row.resource_url } as Resource))); }); }, []);
+  resources = liveResources;
   useEffect(() => { const onPop = () => setRoute(routeFor()); const onKey = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setSearchOpen(true); } if (event.key === "Escape") setSearchOpen(false); }; window.addEventListener("popstate", onPop); window.addEventListener("keydown", onKey); return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("keydown", onKey); }; }, []);
   useEffect(() => { document.title = route.page === "home" ? "Collifi — Learn better. Understand more." : `${route.page[0].toUpperCase()}${route.page.slice(1)} — Collifi`; }, [route]);
-  const content = route.page === "home" ? <Home /> : route.page === "subject" ? <SubjectPage slug={route.slug} /> : route.page === "resources" ? <ResourcesPage slug={route.slug} /> : route.page === "article" ? <ArticlePage /> : route.page === "exams" ? <ExamsPage /> : <SimplePage kind={route.page} />;
+  const content = route.page === "home" ? <Home /> : route.page === "subject" ? <SubjectPage slug={route.slug} /> : route.page === "resources" ? <ResourcesPage slug={route.slug} /> : route.page === "article" ? <ArticlePage /> : route.page === "exams" ? <ExamsPage /> : route.page === "admin" ? <AdminPage onPublished={(row) => setLiveResources((current) => [{ slug: row.id, title: row.title, subject: row.subject, exam: row.examination, type: row.resource_type, year: row.year ? String(row.year) : "", difficulty: row.grade || "", description: [row.medium, row.grade].filter(Boolean).join(" · ") || "Published Collifi resource.", url: row.resource_url } as Resource, ...current])} /> : <SimplePage kind={route.page} />;
   return <div className="app-shell"><Header onSearch={() => setSearchOpen(true)} />{content}{searchOpen && <SearchDialog onClose={() => setSearchOpen(false)} />}</div>;
 }
 
