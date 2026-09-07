@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
 export const supabase = createClient(
-  "https://mtfqktpfcwoigmpmdkwh.supabase.co",
-  "sb_publishable_fbAiXHcYmh4t2Scj3Fsqew_LnSw2tZK",
+  "https://usmoljkvqcuwwypqlrbd.supabase.co",
+  "sb_publishable_d1x5A9cNt1dZc_qjnNH7PQ_CIDzMzzl",
 );
 
 export type CollifiResourceRow = {
