@@ -9,7 +9,7 @@ function escapeXml(value: string) {
 }
 
 export async function onRequest({ request }: { request: Request }) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/catalogue_published_resources?select=slug,updated_at,published_at,created_at&status=eq.published&slug=not.is.null&order=updated_at.desc&limit=5000`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/catalogue_published_resources?select=slug,updated_at,published_at,created_at&status=eq.published&slug=not.is.null&resource_url=not.is.null&order=updated_at.desc&limit=5000`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, Accept: "application/json" } });
   const rows = response.ok ? await response.json() as Array<{ slug?: string; updated_at?: string; published_at?: string; created_at?: string }> : [];
   const entries = new Map<string, string>();
   for (const path of staticPaths) entries.set(`${SITE}${path}`, "2026-09-07");
@@ -19,5 +19,5 @@ export async function onRequest({ request }: { request: Request }) {
     if (!entries.has(url)) entries.set(url, (row.updated_at || row.published_at || row.created_at || "2026-09-07").slice(0, 10));
   }
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">\n${Array.from(entries, ([url, lastmod]) => `  <url>\n    <loc>${escapeXml(url)}</loc>\n    <lastmod>${escapeXml(lastmod)}</lastmod>\n  </url>`).join("\n")}\n</urlset>\n`;
-  return new Response(request.method === "HEAD" ? null : body, { status: 200, headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "no-store, no-cache, must-revalidate", "x-robots-tag": "all" } });
+  return new Response(request.method === "HEAD" ? null : body, { status: 200, headers: { "Content-Type": "application/xml; charset=utf-8", "Content-Length": String(new TextEncoder().encode(body).length), "Cache-Control": "no-store, no-cache, must-revalidate", "X-Robots-Tag": "index, follow" } });
 }
